@@ -13,10 +13,11 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        new Updater().execute(this);
+
+        new UpdateChecker().execute(this);
     }
 
-    public void Update(final Float lastAppVersion) {
+    public void requestUpdate(final Float lastAppVersion) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -28,12 +29,13 @@ public class MainActivity extends Activity {
                         .setCancelable(true)
                         .setPositiveButton("Да", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
-                                Intent intent = new Intent(Intent.ACTION_VIEW);
+                        /*        Intent intent = new Intent(Intent.ACTION_VIEW);
                                 String apkUrl = "https://yadi.sk/d/yMEIx0XVw1f9Tw";
                                 intent.setData(Uri.parse(apkUrl));
 
                                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);
+                                startActivity(intent);*/
+                                new UpdateDownloader().execute();
                                 dialog.dismiss();
                             }
                         })
@@ -48,12 +50,24 @@ public class MainActivity extends Activity {
         });
     }
 
-    public void setTextTextView2(final Float lastAppVersion) {
+    public void setTextOnTextView(final int textViewNumber, final String text) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                TextView textView2 = findViewById(R.id.textView2);
-                textView2.setText("latest version "+lastAppVersion);
+                TextView textView = null;
+                switch(textViewNumber) {
+                    case 1:
+                        textView = findViewById(R.id.textView1CurrentVersion);
+                        break;
+                    case 2:
+                        textView = findViewById(R.id.textView2LatestVersion);
+                        break;
+                    case 3:
+                        textView = findViewById(R.id.textView3DownloadingProgress);
+                        break;
+                }
+                if (textView != null)
+                    textView.setText(text);
             }
         });
     }

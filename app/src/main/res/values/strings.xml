@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Updatable_app</string>
-    <string name="app_version">current version 0.1</string>
+    <string name="app_version">current version: 0.1</string>
 </resources>

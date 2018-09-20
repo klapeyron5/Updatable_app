@@ -4,28 +4,37 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 
-public class Updater extends AsyncTask<MainActivity, Void, Void> {
+public class UpdateChecker extends AsyncTask<MainActivity, Void, Void> {
+    MainActivity mainActivity = null;
+
     @Override
     protected Void doInBackground(MainActivity... mainActivities) {
-        update(mainActivities[0]);
+        this.mainActivity = mainActivities[0];
+        checkUpdates(this.mainActivity);
         return null;
     }
 
-    void update(final MainActivity mainActivity) {
+    void checkUpdates(final MainActivity mainActivity) {
         final Float currentAppVersion = 0.1f;
         final Float lastAppVersion = getLastAppVersion();
 
-        mainActivity.setTextTextView2(lastAppVersion);
+        mainActivity.setTextOnTextView(2,"latest version: "+lastAppVersion);
 
         if (currentAppVersion < lastAppVersion)
-            mainActivity.Update(lastAppVersion);
+          //  downloadAPK("https://yadi.sk/d/yMEIx0XVw1f9Tw");
+            mainActivity.requestUpdate(lastAppVersion);
     }
 
     Float getLastAppVersion() {
