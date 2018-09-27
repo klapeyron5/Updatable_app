@@ -33,13 +33,12 @@ public class UpdateChecker extends AsyncTask<MainActivity, Void, Void> {
         mainActivity.setTextOnTextView(2,"latest version: "+lastAppVersion);
 
         if (currentAppVersion < lastAppVersion)
-          //  downloadAPK("https://yadi.sk/d/yMEIx0XVw1f9Tw");
             mainActivity.requestUpdate(lastAppVersion);
     }
 
     Float getLastAppVersion() {
         try {
-            URL url = new URL("https://raw.githubusercontent.com/nikl5/Updatable_app/master/Updatable_app.txt");
+            URL url = new URL("http://f0230501.xsph.ru//Updatable_app.txt ");//"https://raw.githubusercontent.com/nikl5/Updatable_app/master/Updatable_app.txt");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(60000); // timing out in a minute
             BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
