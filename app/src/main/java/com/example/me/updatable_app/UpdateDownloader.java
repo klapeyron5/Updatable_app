@@ -15,15 +15,15 @@ import java.net.URLConnection;
 
 public class UpdateDownloader extends AsyncTask<MainActivity, Void, Integer>  {
     MainActivity mainActivity = null;
- //   private MainActivity context;
 
-    String path = "/sdcard/Updatable_app_v.apk";
+    String path = "";
 
     @Override
     protected Integer doInBackground(MainActivity... mainActivities) {
         Log.d("TAG", "Started to update");
         this.mainActivity = mainActivities[0];
-        return downloadAPK("http://f0230501.xsph.ru/Updatable_app_0.2.apk");
+        path = "/sdcard/Updatable_app_v"+mainActivity.lastAppVersion+".apk";
+        return downloadAPK("http://f0230501.xsph.ru/Updatable_app_"+mainActivity.lastAppVersion+".apk");
     }
 
     protected Integer downloadAPK(String... sUrl) {
@@ -52,25 +52,22 @@ public class UpdateDownloader extends AsyncTask<MainActivity, Void, Integer>  {
             output.close();
             input.close();
         } catch (Exception e) {
-            Log.d("TAG", "Well that didn't work out so well...");
-            Log.d("TAG", e.getMessage());
             return 0;
         }
         return 1;
     }
 
     public void publishProgress(int progress) {
-        mainActivity.setTextOnTextView(3, "downloading apk: " + progress);
+        mainActivity.setTextOnTextView(3, "downloading apk: " + progress + "%");
     }
 
-    // begin the installation by opening the resulting file
+    // begin the installation of downloaded APK
     @Override
     protected void onPostExecute(Integer result) {
         if (result == 1) {
             Intent i = new Intent();
             i.setAction(Intent.ACTION_VIEW);
             i.setDataAndType(Uri.fromFile(new File(path)), "application/vnd.android.package-archive");
-            Log.d("Lofting", "About to install new .apk");
             this.mainActivity.startActivity(i);
         }
     }

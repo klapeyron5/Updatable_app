@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity {
     final MainActivity thiis = this;
+    public float lastAppVersion = 0.0f;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,20 +26,13 @@ public class MainActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                thiis.lastAppVersion = lastAppVersion;
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
                 builder.setMessage("Доступно обновление приложения Updatable_upp до версии " +
-                        lastAppVersion + " - желаете обновиться? " +
-                        "Если вы согласны - вы будете перенаправлены к скачиванию APK файла,"
-                        +" который затем нужно будет открыть.")
+                        lastAppVersion + " - желаете обновиться?")
                         .setCancelable(true)
                         .setPositiveButton("Да", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
-                        /*        Intent intent = new Intent(Intent.ACTION_VIEW);
-                                String apkUrl = "https://yadi.sk/d/yMEIx0XVw1f9Tw";
-                                intent.setData(Uri.parse(apkUrl));
-
-                                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);*/
                                 new UpdateDownloader().execute(thiis);
                                 dialog.dismiss();
                             }
