@@ -14,20 +14,17 @@ import java.net.URL;
 import java.net.URLConnection;
 
 public class UpdateDownloader extends AsyncTask<MainActivity, Void, Integer>  {
-    MainActivity mainActivity = null;
-
-    String path = "";
+    private MainActivity mainActivity = null;
+    private String pathToStoreApk = "";
 
     @Override
     protected Integer doInBackground(MainActivity... mainActivities) {
-        Log.d("TAG", "Started to update");
         this.mainActivity = mainActivities[0];
-        path = "/sdcard/Updatable_app_v"+mainActivity.lastAppVersion+".apk";
-        return downloadAPK("http://f0230501.xsph.ru/Updatable_app_"+mainActivity.lastAppVersion+".apk");
+        pathToStoreApk = "/sdcard/Updatable_app_"+UpdateChecker.getLastVersionName()+".apk";
+        return downloadAPK(UpdateChecker.getLastAppURL());
     }
 
     protected Integer downloadAPK(String... sUrl) {
-        Log.d("TAG", "Started to download");
         try {
             URL url = new URL(sUrl[0]);
             URLConnection connection = url.openConnection();
@@ -37,7 +34,7 @@ public class UpdateDownloader extends AsyncTask<MainActivity, Void, Integer>  {
 
             // download the file
             InputStream input = new BufferedInputStream(url.openStream());
-            OutputStream output = new FileOutputStream(path);
+            OutputStream output = new FileOutputStream(pathToStoreApk);
 
             byte data[] = new byte[1024];
             long total = 0;
@@ -58,16 +55,19 @@ public class UpdateDownloader extends AsyncTask<MainActivity, Void, Integer>  {
     }
 
     public void publishProgress(int progress) {
-        mainActivity.setTextOnTextView(3, "downloading apk: " + progress + "%");
+        mainActivity.setTextOnTextView(3, "downloading apk: " + progress + "%"); //TODO make this in notifications
     }
 
-    // begin the installation of downloaded APK
+    /**
+     * Begins the installation of downloaded APK. User should confirm.
+     * @param result
+     */
     @Override
     protected void onPostExecute(Integer result) {
         if (result == 1) {
             Intent i = new Intent();
             i.setAction(Intent.ACTION_VIEW);
-            i.setDataAndType(Uri.fromFile(new File(path)), "application/vnd.android.package-archive");
+            i.setDataAndType(Uri.fromFile(new File(pathToStoreApk)), "application/vnd.android.package-archive");
             this.mainActivity.startActivity(i);
         }
     }

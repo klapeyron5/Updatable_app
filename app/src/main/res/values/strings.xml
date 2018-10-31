@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Updatable_app</string>
-    <string name="app_version">current version: 0.1</string>
+    <string name="version_name">0.1</string>
+    <string name="update_info_URL">http://f0230501.xsph.ru//Updatable_app.txt</string>
 </resources>

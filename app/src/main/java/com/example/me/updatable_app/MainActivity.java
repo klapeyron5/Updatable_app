@@ -3,37 +3,39 @@ package com.example.me.updatable_app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.TextView;
 
+import java.io.File;
+
 public class MainActivity extends Activity {
-    final MainActivity thiis = this;
-    public float lastAppVersion = 0.0f;
+    final MainActivity mainContext = this;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("TAG", "Started");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setTextOnTextView(1,"current version: "+getResources().getString(R.string.version_name));
+
+        deleteDownloadedApk();
 
         new UpdateChecker().execute(this);
     }
 
-    public void requestUpdate(final Float lastAppVersion) {
+    /**
+     * Asks user to update app
+     */
+    public void requestUpdate() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                thiis.lastAppVersion = lastAppVersion;
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder.setMessage("Доступно обновление приложения Updatable_upp до версии " +
-                        lastAppVersion + " - желаете обновиться?")
+                builder.setMessage("Доступно обновление приложения "+getResources().getString(R.string.app_name)+" до версии " +
+                        UpdateChecker.getLastVersionName() + " - желаете обновиться?")
                         .setCancelable(true)
                         .setPositiveButton("Да", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
-                                new UpdateDownloader().execute(thiis);
+                                new UpdateDownloader().execute(mainContext);
                                 dialog.dismiss();
                             }
                         })
@@ -68,5 +70,14 @@ public class MainActivity extends Activity {
                     textView.setText(text);
             }
         });
+    }
+
+    /**
+     * Removes apk-file, if it called Updatable_app_<current version name>.apk
+     */
+    public void deleteDownloadedApk() {
+        String pathToStoreApk = "/sdcard/Updatable_app_"+getResources().getString(R.string.version_name)+".apk";
+        File f = new File(pathToStoreApk);
+        f.delete();
     }
 }
