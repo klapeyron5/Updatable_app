@@ -4,7 +4,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.example.me.updatable_app"
-        minSdkVersion 14
+        minSdkVersion 26//14
         targetSdkVersion 28
         versionCode 1
         versionName "@string/version_name"

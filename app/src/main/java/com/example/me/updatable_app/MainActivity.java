@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 
 import java.io.File;
@@ -17,9 +18,11 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         setTextOnTextView(1,"current version: "+getResources().getString(R.string.version_name));
 
+        Log.d("TAG", "Install---->>>> "+getPackageManager().canRequestPackageInstalls());
+
         deleteDownloadedApk();
 
-        new UpdateChecker().execute(this);
+        new UpdateChecker().execute(mainContext);
     }
 
     /**
