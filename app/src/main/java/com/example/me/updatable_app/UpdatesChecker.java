@@ -23,20 +23,29 @@ public class UpdatesChecker extends AsyncTask<UpdatesCheckListener, Void, Void> 
     /**URL of actual app's apk storing*/
     private String lastAppURL = null;
 
+    private boolean isExecuted = false;
+
     /**@param updatesCheckListeners - [0]th element is the context of call*/
     @Override
     protected Void doInBackground(UpdatesCheckListener... updatesCheckListeners) {
         this.updatesCheckListener = updatesCheckListeners[0];
-        checkUpdates(this.updatesCheckListener);
+        checkUpdates();
         return null;
+    }
+
+    @Override
+    protected void onPostExecute(Void aVoid) {
+        if (isExecuted && isValidUpdatesInfo())
+            updatesCheckListener.onUpdatesChecked(this);
+        else
+            updatesCheckListener.onUpdatesCouldNotCheck(this);
     }
 
     /**
      * Checks last code version, last version name, last app url
      * and store them in RAM. These can be obtained through getters of this class UpdatesChecker
-     * @param updatesCheckListener
      */
-    private void checkUpdates(final UpdatesCheckListener updatesCheckListener) {
+    private void checkUpdates() {
         try {
             if (updatesCheckListener == null) throw new NullPointerException();
 
@@ -64,10 +73,7 @@ public class UpdatesChecker extends AsyncTask<UpdatesCheckListener, Void, Void> 
                 }
             }
             in.close();
-            if (isValidUpdatesInfo())
-                updatesCheckListener.onUpdatesChecked(this);
-            else
-                updatesCheckListener.onUpdatesCouldNotCheck(this);
+            isExecuted = true;
         } catch (NullPointerException e) {
             e.printStackTrace();
         } catch (MalformedURLException e) {
