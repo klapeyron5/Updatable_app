@@ -82,33 +82,4 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
     protected void onProgressUpdate(Integer... values) {
         internetDataDownloadListener.onInternetDataDownloadingProgressUpdate(values[0]);
     }
-
-    /**
-     * Begins the installation of downloaded APK. User should confirm.
-     */
-  //  @Override
-  //  protected void onPostExecute(Void aVoid) {
-
-    //    if (result == 1) {
-      //      Log.d("TAG","InternetDataDownloader onPostExecute 1");
-           // this.mainActivity.startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES));//, Uri.fromFile(new File(pathToStoreApk))));
-
-
-      //      Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-          //  Log.d("TAG","Path to apk 1: "+Uri.fromFile(new File(pathToStoreApk)));
-         //   Log.d("TAG","Path to apk 2: "+FileProvider.getUriForFile(this.mainActivity, "com.example.me.fileprovider", new File(pathToStoreApk)));
-          //  intent.setDataAndType(FileProvider.getUriForFile(this.mainActivity, "com.example.me.fileprovider",
-                    //new File(pathToStoreApk)), "application/vnd.android.package-archive");
-         //   intent.setDataAndType(Uri.fromFile(new File(pathToStoreApk)), "application/vnd.android.package-archive");
-     //       intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-          //  this.mainActivity.startActivity(intent);
-
-           /* Intent i = new Intent();
-            i.setAction(Intent.ACTION_INSTALL_PACKAGE);
-            i.setDataAndType(Uri.fromFile(new File(pathToStoreApk)), "application/vnd.android.package-archive");
-            i.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            this.mainActivity.startActivity(i);*/
-     //  }
-   // }
 }

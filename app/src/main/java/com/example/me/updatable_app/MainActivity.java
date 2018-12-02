@@ -1,6 +1,5 @@
 package com.example.me.updatable_app;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -15,13 +14,12 @@ import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.FileProvider;
-import android.util.Log;
 import android.widget.TextView;
 
 import java.io.File;
 
 public class MainActivity extends Activity implements UpdatesCheckListener, InternetDataDownloadListener {
-    final MainActivity mainContext = this;
+    private final MainActivity mainContext = this;
     private UpdatesChecker updatesChecker;
 
     private static final Integer REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE = 21;
@@ -33,43 +31,10 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
         setContentView(R.layout.activity_main);
         setTextOnTextView(1,"current version: "+getResources().getString(R.string.version_name));
 
-        Log.d("TAG", "Install---->>>> "+getPackageManager().canRequestPackageInstalls());
-
         deleteDownloadedApk();
 
         updatesChecker = new UpdatesChecker();
         updatesChecker.execute(mainContext);
-    }
-
-    public void setTextOnTextView(final int textViewNumber, final String text) {
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                TextView textView = null;
-                switch(textViewNumber) {
-                    case 1:
-                        textView = findViewById(R.id.textView1CurrentVersion);
-                        break;
-                    case 2:
-                        textView = findViewById(R.id.textView2LatestVersion);
-                        break;
-                    case 3:
-                        textView = findViewById(R.id.textView3DownloadingProgress);
-                        break;
-                }
-                if (textView != null)
-                    textView.setText(text);
-            }
-        });
-    }
-
-    /**
-     * Removes apk-file, if it called Updatable_app_<current version name>.apk
-     */
-    public void deleteDownloadedApk() {
-        String pathToStoreApk = "/sdcard/Updatable_app_"+getResources().getString(R.string.version_name)+".apk";
-        File f = new File(pathToStoreApk);
-        f.delete();
     }
 
     @Override
@@ -79,7 +44,6 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
 
     @Override
     public void onUpdatesChecked(UpdatesChecker updatesChecker) {
-        Log.d("TAG","MainActivity onUpdatesChecked");
         setTextOnTextView(2,"latest version: "+ updatesChecker.getLastVersionName()); //TODO logs
         PackageInfo pInfo = null;
         try {
@@ -100,7 +64,6 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
 
     @Override
     public void onUpdatesCouldNotCheck(UpdatesChecker updatesChecker) {
-        Log.d("TAG","MainActivity onUpdatesCouldNotCheck");
         setTextOnTextView(2,"latest version: " + "can't check last updates"); //TODO logs
     }
 
@@ -145,11 +108,10 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
                             .setPositiveButton("Да", new DialogInterface.OnClickListener() {
                                 public void onClick(DialogInterface dialog, int id) {
                                     dialog.dismiss();
-                                    String[] PERMISSIONS = {android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
-                                    if (hasPermissions(mainContext,PERMISSIONS))
-                                        new InternetDataDownloader().execute(mainContext);
-                                    else {
-                                        ActivityCompat.requestPermissions(mainContext, PERMISSIONS, REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE);
+                                    if (!tryToDownloadInternetData(mainContext)) {
+                                        ActivityCompat.requestPermissions(mainContext,
+                                                new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                                                REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE);
                                     }
                                 }
                             })
@@ -166,26 +128,47 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
     }
 
     private void installApk(String apkUrl) {
-        Log.d("TAG","MainActivity installApk 1");
-        File file = new File(apkUrl);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            Log.d("TAG","MainActivity installApk 2");
-            if (getPackageManager().canRequestPackageInstalls()) {
-                Log.d("TAG","MainActivity installApk 3");
-                Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-                Uri contentUri = FileProvider.getUriForFile(mainContext, "com.example.me.fileprovider", file);
-                intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
-                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                mainContext.startActivity(intent);
-            } else {
-                Log.d("TAG","MainActivity installApk 4");
-                startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                        Uri.parse("package:com.example.me.updatable_app")),
-                        REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK);
+            if (!tryToInstallApk(apkUrl)) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(mainContext);
+                        builder.setMessage("APK файл последней версии приложения " + getResources().getString(R.string.app_name) + " загрузился, " +
+                                "но приложение не имеет разрешения на установку этого apk. Сейчас вы будете перенаправлены, чтобы дать это разрешение.")
+                                .setPositiveButton("Ок", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        dialog.dismiss();
+                                        startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                                        Uri.parse("package:com.example.me.updatable_app")),
+                                                REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK);
+
+                                    }
+                                });
+                        AlertDialog alert = builder.create();
+                        alert.show();
+                    }
+                });
             }
         } else {
          //   Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-         //   intent.setDataAndType(Uri.fromFile(file), "application/pdf");
+         //   intent.setDataAndType(Uri.fromFile(file), "application/");
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE) {
+            String[] PERMISSIONS = {android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
+            tryToDownloadInternetData(mainContext);
+        }
+    }
+
+    /*Only ACTION_INSTALL_PACKAGE/ACTION_MANAGE_UNKNOWN_APP_SOURCES permission goes here*/
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK) {
+            tryToInstallApk(getInternetDataPathToStore());
         }
     }
 
@@ -201,22 +184,56 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
         return true;
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        Log.d("TAG","onRequestPermissionsResult requestCode: "+requestCode);
-        if (requestCode == REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE) {
-            String[] PERMISSIONS = {android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
-            if (hasPermissions(mainContext,PERMISSIONS)) {
-                requestUpdate(updatesChecker);
-            }
+    /*Returns true if app has WRITE_EXTERNAL_STORAGE permission and starts InternetDataDownloader*/
+    private boolean tryToDownloadInternetData(InternetDataDownloadListener internetDataDownloadListener) {
+        if (hasPermissions(mainContext,new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE})) {
+            new InternetDataDownloader().execute(internetDataDownloadListener);
+            return true;
         }
+        return false;
     }
 
-    /*Only ACTION_INSTALL_PACKAGE permission goes here*/
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK) {
-            installApk(getInternetDataPathToStore());
+    private boolean tryToInstallApk(String apkUrl) {
+        if (getPackageManager().canRequestPackageInstalls()) {
+            File file = new File(apkUrl);
+            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+            Uri contentUri = FileProvider.getUriForFile(mainContext, "com.example.me.fileprovider", file);
+            intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            mainContext.startActivity(intent);
+            return true;
         }
+        return false;
+    }
+
+    /**
+     * Removes apk-file, if it called Updatable_app_<current version name>.apk
+     */
+    public void deleteDownloadedApk() {
+        File f = new File(Environment.getExternalStorageDirectory()+"/"+
+                getResources().getString(R.string.app_name)+"_"+getResources().getString(R.string.version_name)+".apk");
+        f.delete();
+    }
+
+    public void setTextOnTextView(final int textViewNumber, final String text) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                TextView textView = null;
+                switch(textViewNumber) {
+                    case 1:
+                        textView = findViewById(R.id.textView1CurrentVersion);
+                        break;
+                    case 2:
+                        textView = findViewById(R.id.textView2LatestVersion);
+                        break;
+                    case 3:
+                        textView = findViewById(R.id.textView3DownloadingProgress);
+                        break;
+                }
+                if (textView != null)
+                    textView.setText(text);
+            }
+        });
     }
 }
