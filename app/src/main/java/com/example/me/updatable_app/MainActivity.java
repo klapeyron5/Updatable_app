@@ -128,7 +128,7 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
     }
 
     private void installApk(String apkUrl) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!tryToInstallApk(apkUrl)) {
                 runOnUiThread(new Runnable() {
                     @Override
@@ -150,10 +150,10 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
                     }
                 });
             }
-        } else {
-         //   Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-         //   intent.setDataAndType(Uri.fromFile(file), "application/");
-        }
+        } else
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
+                tryToInstallApk(apkUrl);
+            }
     }
 
     @Override
@@ -194,15 +194,25 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
     }
 
     private boolean tryToInstallApk(String apkUrl) {
-        if (getPackageManager().canRequestPackageInstalls()) {
-            File file = new File(apkUrl);
-            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-            Uri contentUri = FileProvider.getUriForFile(mainContext, "com.example.me.fileprovider", file);
-            intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
-            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            mainContext.startActivity(intent);
-            return true;
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { //>= 26 API level
+            if (getPackageManager().canRequestPackageInstalls()) {
+                File file = new File(apkUrl);
+                Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+                Uri contentUri = FileProvider.getUriForFile(mainContext, "com.example.me.fileprovider", file);
+                intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                mainContext.startActivity(intent);
+                return true;
+            }
+        } else
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) { //minimum 14 API level
+                File file = new File(apkUrl);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                Uri contentUri = Uri.fromFile(file);
+                intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+                mainContext.startActivity(intent);
+                return true;
+            }
         return false;
     }
 

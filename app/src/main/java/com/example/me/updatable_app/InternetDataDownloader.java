@@ -20,7 +20,6 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
 
     @Override
     protected Void doInBackground(InternetDataDownloadListener... internetDataDownloadListeners) { //params[0] - url to download, params[1] - path to store
-        Log.d("TAG", "InternetDataDownloader 1");
         this.internetDataDownloadListener = internetDataDownloadListeners[0];
         downloadData();
         return null;
@@ -39,7 +38,6 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
 
         String dataUrl = internetDataDownloadListener.getInternetDataUrl();
         String dataStorePath = internetDataDownloadListener.getInternetDataPathToStore();
-        Log.d("TAG","InternetDataDownloader downloadAPK 1");
         try {
             URL url = new URL(dataUrl); //MalformedURLException
             URLConnection connection = url.openConnection(); //IOException
@@ -59,7 +57,6 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
                 publishProgress((int) (total * 100 / fileLength));
                 output.write(data, 0, count); //IOException
             }
-            Log.d("TAG", "InternetDataDownloader downloadAPK 8");
             output.flush(); //IOException
             output.close(); //IOException
             input.close(); //IOException
