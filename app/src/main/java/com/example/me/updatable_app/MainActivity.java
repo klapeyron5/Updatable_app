@@ -13,12 +13,19 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.FileProvider;
+import android.util.Log;
 import android.widget.TextView;
+
+import com.example.me.mylibrary.CentralClass;
+import com.example.me.mylibrary.TestClass;
 
 import java.io.File;
 
-public class MainActivity extends Activity implements UpdatesCheckListener, InternetDataDownloadListener {
+public class MainActivity extends FragmentActivity implements UpdatesCheckListener, InternetDataDownloadListener {
     private final MainActivity mainContext = this;
     private UpdatesChecker updatesChecker;
 
@@ -29,12 +36,28 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        setTextOnTextView(1,"current version: "+getResources().getString(R.string.version_name));
 
-        deleteDownloadedApk();
+        try {
+            Log.d("TAG","1: "+getPackageManager().getPackageInfo(getPackageName(),0).versionCode);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
 
-        updatesChecker = new UpdatesChecker();
-        updatesChecker.execute(mainContext);
+        CentralClass centralClass = new CentralClass();
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.add(centralClass,"centralClass");
+        fragmentTransaction.commitNow();
+      //  centralClass.checkUpdate();
+
+       // setTextOnTextView(1, centralClass.getTestStr());
+
+      //  setTextOnTextView(1,"current version: "+getResources().getString(R.string.version_name));
+
+    //    deleteDownloadedApk();
+
+    //    updatesChecker = new UpdatesChecker();
+    //    updatesChecker.execute(mainContext);
     }
 
     @Override
@@ -159,8 +182,9 @@ public class MainActivity extends Activity implements UpdatesCheckListener, Inte
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE) {
-            String[] PERMISSIONS = {android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
-            tryToDownloadInternetData(mainContext);
+            Log.d("TAG","mainActivity onRequestPermissionsResult");
+        //    String[] PERMISSIONS = {android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
+        //    tryToDownloadInternetData(mainContext);
         }
     }
 
