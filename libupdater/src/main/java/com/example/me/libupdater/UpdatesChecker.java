@@ -1,9 +1,12 @@
 package com.example.me.libupdater;
 
 import android.os.AsyncTask;
+import android.util.Log;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -13,13 +16,6 @@ public class UpdatesChecker extends AsyncTask<UpdatesCheckListener, Void, Void> 
 
     private UpdatesCheckListener updatesCheckListener;
     private String updateInfoUrl;
-
-    /**Actual version of code (the main number of update history)*/
-    private int lastCodeVersion = -1;
-    /**Name of actual version, shown to user*/
-    private String lastVersionName = null;
-    /**URL of actual app's apk storing*/
-    private String lastAppURL = null;
 
     private boolean hasExecuted = false;
 
@@ -37,11 +33,12 @@ public class UpdatesChecker extends AsyncTask<UpdatesCheckListener, Void, Void> 
 
     @Override
     protected void onPostExecute(Void aVoid) {
-        if (hasExecuted && isValidUpdatesInfo()) {
-            updatesCheckListener.onUpdatesChecked(this);
+        if (hasExecuted && UpdatesInfoStruct.isValidUpdatesInfo()) {
+            UpdatesInfoStruct.isUpdatesCheckedSuccessfully = true;
+            updatesCheckListener.onUpdatesChecked();
         }
         else {
-            updatesCheckListener.onUpdatesCouldNotCheck(this);
+            updatesCheckListener.onUpdatesCouldNotCheck("onPostExecute"); //TODO problems with thread synchronization OR updates info is not valid
         }
     }
 
@@ -56,6 +53,8 @@ public class UpdatesChecker extends AsyncTask<UpdatesCheckListener, Void, Void> 
             URL url = new URL(updateInfoUrl); //MalformedURLException
             HttpURLConnection conn = (HttpURLConnection) url.openConnection(); //IOException
             conn.setConnectTimeout(60000); // timing out in a minute
+//            url.openStream();
+ //           conn.getInputStream();
             BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()));
             String str;
             int idx;
@@ -63,55 +62,103 @@ public class UpdatesChecker extends AsyncTask<UpdatesCheckListener, Void, Void> 
                 idx = str.indexOf("code_version");
                 if (idx != -1) {
                     str = str.substring(idx + ("code_version").length()).trim();
-                    lastCodeVersion = Integer.parseInt(str);
+                    UpdatesInfoStruct.lastCodeVersion = Integer.parseInt(str);
                 }
                 idx = str.indexOf("version_name");
                 if (idx != -1) {
                     str = str.substring(idx + ("version_name").length()).trim();
-                    lastVersionName = str;
+                    UpdatesInfoStruct.lastVersionName = str;
                 }
                 idx = str.indexOf("apk_URL");
                 if (idx != -1) {
                     str = str.substring(idx + ("apk_URL").length()).trim();
-                    lastAppURL = str;
+                    UpdatesInfoStruct.lastAppURL = str;
                 }
             }
+            Log.d("TAG","checkUpdates 4");
             in.close();
             conn.disconnect();
+            Log.d("TAG","checkUpdates 5");
             hasExecuted = true;
         } catch (NullPointerException e) {
-            e.printStackTrace();
+            e.printStackTrace(); //TODO where is updatesCheckListener ?
         } catch (MalformedURLException e) {
             e.printStackTrace();
-            updatesCheckListener.onUpdatesCouldNotCheck(this);
         } catch (IOException e) {
             e.printStackTrace();
-            updatesCheckListener.onUpdatesCouldNotCheck(this);
+            updatesCheckListener.onUpdatesCouldNotCheck("IOException");
         }
     }
 
-    /**Actual version of code (the main number of update history)*/
-    public int getLastCodeVersion() {
-        return lastCodeVersion;
+    private void newCheckUpdates() {
+        try {
+            Log.d("TAG","newCheckUpdates 1");
+            URL url = new URL(updateInfoUrl); //MalformedURLException
+            Log.d("TAG","newCheckUpdates 2");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection(); //IOException
+            connection.setConnectTimeout(60000);
+            connection.setReadTimeout(60000);
+            Log.d("TAG","newCheckUpdates 3");
+            connection.getInputStream();
+//            InputStream in = new BufferedInputStream(connection.getInputStream());
+            Log.d("TAG","newCheckUpdates 4");
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-    /**Name of actual version, shown to user*/
-    public String getLastVersionName() {
-        return lastVersionName;
-    }
+    public static class UpdatesInfoStruct { //TODO add timestamp of updates checking (or number of updates check request) to avoid dissynchronization of processing updates check requests in UpdatesCheckListener
+        /**Default lastCodeVersion value (when updates have not checked successfully).*/
+        public final static int LastCodeVersionDefault = -1;
+        /**Default lastAppURL value (when updates have not checked successfully).*/
+        public final static String LastAppURLDefault = null;
+        /**Default lastVersionName value (when updates have not checked successfully).*/
+        public final static String LastVersionNameDefault = null;
 
-    /**URL of actual app's apk storing*/
-    public String getLastAppURL() {
-        return lastAppURL;
-    }
+        private static boolean isUpdatesCheckedSuccessfully = false;
 
-    /*Is info about updates in proper format?*/
-    public boolean isValidUpdatesInfo() {
-        if ((lastCodeVersion >= 0)&&
-                (lastVersionName != null)&&
-                (lastAppURL != null))
-            return true;
-        else
-            return false;
+
+        /**Actual version of code (the main number of update history)*/
+        private static int lastCodeVersion = LastCodeVersionDefault;
+        /**Name of actual version, shown to user*/
+        private static String lastVersionName = LastVersionNameDefault;
+        /**URL of actual app's apk storing*/
+        private static String lastAppURL = LastAppURLDefault;
+
+        /**Actual version of code (the main number of update history) or {@LastCodeVersionDefault}
+         * if updates is not checked successfully.*/
+        public static int getLastCodeVersion() {
+            if (isUpdatesCheckedSuccessfully)
+                return lastCodeVersion;
+            return LastCodeVersionDefault;
+        }
+
+        /**Name of actual version, shown to user or {@LastVersionNameDefault}
+         * if updates is not checked successfully.*/
+        public static String getLastVersionName() {
+            if (isUpdatesCheckedSuccessfully)
+                return lastVersionName;
+            return LastVersionNameDefault;
+        }
+
+        /**URL of actual app's apk storing or {@LastAppURLDefault}
+         * if updates is not checked successfully.*/
+        public static String getLastAppURL() {
+            if (isUpdatesCheckedSuccessfully)
+                return lastAppURL;
+            return LastAppURLDefault;
+        }
+
+        /*Is info about updates in proper format?*/
+        private static boolean isValidUpdatesInfo() {
+            if ((lastCodeVersion >= 0)&&
+                    (lastVersionName != null)&&
+                    (lastAppURL != null))
+                return true;
+            else
+                return false;
+        }
     }
 }

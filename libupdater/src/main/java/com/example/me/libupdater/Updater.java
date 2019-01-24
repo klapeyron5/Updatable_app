@@ -23,85 +23,105 @@ import android.os.Build;
 
 import java.io.File;
 
-public class Updater extends Fragment implements UpdatesCheckListener, InternetDataDownloadListener {
-    private static final Integer REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE = 21;
-    private static final Integer REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK = 22;
+import com.example.me.libupdater.UpdatesChecker.UpdatesInfoStruct;
 
+public class Updater extends Fragment implements UpdatesCheckListener, InternetDataDownloadListener {
+    private static final Integer REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE = 21;
+    private static final Integer REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK = 22;
+
+    /*Must be True to be able for work. To make it True - attach this fragment to your main activity.*/
     private boolean isAttached = false;
 
-    private String costylPrototypeString;
-
     @Override
+    /*Attaching to calling activity. Essential for work.*/
     public void onAttach(Context context) {
         super.onAttach(context);
         isAttached = true;
     }
 
+    //TODO delete this override may be
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        Log.d("TAG","onCreateView");
-    //    requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE);
-    /*    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { //>= 26 API level
-            if (!getActivity().getPackageManager().canRequestPackageInstalls()) {
-                Log.d("TAG","LIBLIBLIB canNotRequestPackageInstalls");
-                startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                Uri.parse("package:"+getActivity().getPackageName())),
-                        REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK);
-            }
-        }*/
         return null;
     }
 
     @Override
+    /*Here permissions result will be caught (beside REQUEST_INSTALL_PACKAGES)*/
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE) {
-            Log.d("TAG","LIBLIBLIB onRequestPermissionsResult");
+        if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
             checkUpdate();
         }
     }
 
     @Override
+    /*Here REQUEST_INSTALL_PACKAGES will be caught.*/
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d("TAG","LIBLIBLIB onActivityResult, code: "+requestCode);
-        if (requestCode == REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK) {
-            tryToInstallApk(costylPrototypeString);
+        if (requestCode == REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK) {
+            tryToInstallApk(getApkStorePath());
         }
     }
-
-    private void checkUpdate() {
-        new UpdatesChecker(getString(R.string.update_info_URL)).execute(this);
-    }
-
-    private void suggestUpdate(UpdatesChecker updatesChecker) {
-        int currentCodeVersion = getAppVersionCode();
-        if (currentCodeVersion < updatesChecker.getLastCodeVersion()) {
-            requestUpdate(updatesChecker);
-        } else
-        if (currentCodeVersion == updatesChecker.getLastCodeVersion()) {
-            //TODO update last time of updates check
-        } else {
-            //TODO problems on host
-        }
-    }
+//---End of activity's overrides
 
     public void checkSuggestUpdate() {
         if (isAttached) {
             checkUpdate();
         } else {
+            //TODO
+        }
+    }
 
+    /*Check info about app updates. Results of checks will be returned in UpdatesCheckListener implementation.*/
+    private void checkUpdate() {
+        new UpdatesChecker(getString(R.string.update_info_URL)).execute(this);
+    }
+
+    private void suggestUpdate() {
+        int currentCodeVersion = getAppVersionCode(); //TODO may be check appVersion > 0
+        if (currentCodeVersion < UpdatesInfoStruct.getLastCodeVersion()) {
+
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+                    builder.setMessage("Доступно обновление приложения " + getAppLabel() + " до версии " +
+                            UpdatesInfoStruct.getLastVersionName() + " - желаете обновиться?")
+                            .setCancelable(true)
+                            .setPositiveButton("Да", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int id) {
+                                    dialog.dismiss();
+                                    downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath());
+                                }
+                            })
+                            .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int id) {
+                                    dialog.cancel();
+                                }
+                            });
+                    AlertDialog alert = builder.create();
+                    alert.show();
+                }
+            });
+
+        } else {
+            if (currentCodeVersion == UpdatesInfoStruct.getLastCodeVersion()) {
+                //TODO update last time of updates check (not needed cas UpdatesInfoStruct stores last timestamp)
+            } else { //TODO current version > last version checked from host
+                //TODO problems on host
+            }
         }
     }
 
     @Override
-    public void onUpdatesChecked(UpdatesChecker updatesChecker) {
-        Log.d("TAG","latest version: " + updatesChecker.getLastVersionName());
-        suggestUpdate(updatesChecker);
+    public void onUpdatesChecked() {
+        Log.d("TAG","latest version: " + UpdatesInfoStruct.getLastVersionName());
+        suggestUpdate();
     }
 
     @Override
-    public void onUpdatesCouldNotCheck(UpdatesChecker updatesChecker) {
-        Log.d("TAG","latest version: " + "can't check last updates");
+    public void onUpdatesCouldNotCheck(String error) {
+        Log.d("TAG","latest version: " + "can't check last updates: " + error);
     }
 
     @Override
@@ -122,41 +142,6 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
 
     private void clearCache() {
 
-    }
-
-    /**
-     * Asks user to update app
-     */
-    private void requestUpdate(final UpdatesChecker updatesChecker) {
-        if (updatesChecker.isValidUpdatesInfo()) {
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-
-                    builder.setMessage("Доступно обновление приложения " + getAppLabel() + " до версии " +
-                            updatesChecker.getLastVersionName() + " - желаете обновиться?")
-                            .setCancelable(true)
-                            .setPositiveButton("Да", new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int id) {
-                                    dialog.dismiss();
-                                    costylPrototypeString = Environment.getExternalStorageDirectory()+
-                                            "/"+getAppLabel()+"_"+updatesChecker.getLastVersionName()+".apk";
-                                    downloadInternetData(updatesChecker.getLastAppURL(),
-                                            Environment.getExternalStorageDirectory()+
-                                                    "/"+getAppLabel()+"_"+updatesChecker.getLastVersionName()+".apk");
-                                }
-                            })
-                            .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int id) {
-                                    dialog.cancel();
-                                }
-                            });
-                    AlertDialog alert = builder.create();
-                    alert.show();
-                }
-            });
-        }
     }
 
     @Nullable
@@ -187,7 +172,10 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         return pInfo.versionCode;
     }
 
-
+    private String getApkStorePath() {
+        return Environment.getExternalStorageDirectory()+
+                "/"+getAppLabel()+"_"+UpdatesInfoStruct.getLastVersionName()+".apk";
+    }
 
 
 
@@ -202,7 +190,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
             new InternetDataDownloader(internetDataUrl,internetDataPathToStore).execute(this);
         } else {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    REQUEST_WRITE_EXTERNAL_STORAGE_PERMISSION_TO_REQUEST_UPDATE);
+                    REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
         }
     }
 
@@ -220,7 +208,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                                         dialog.dismiss();
                                         startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                                         Uri.parse("package:"+getActivity().getPackageName())),
-                                                REQUEST_REQUEST_INSTALL_PACKAGES_PERMISSION_TO_INSTALL_LAST_VERSION_APK);
+                                                REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK);
 
                                     }
                                 });

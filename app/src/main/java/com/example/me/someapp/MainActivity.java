@@ -8,7 +8,7 @@ import android.support.v4.app.FragmentTransaction;
 
 import com.example.me.libupdater.Updater;
 
-public class MainActivity extends FragmentActivity {
+public class MainActivity extends FragmentActivity { //обязательно FragmentActivity
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -20,8 +20,8 @@ public class MainActivity extends FragmentActivity {
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
 
         fragmentTransaction.add(updater,"updater");
-        fragmentTransaction.commitNow();
+        fragmentTransaction.commitNow(); //синхронная регистрация фрагмента
 
-        updater.checkSuggestUpdate();
+        updater.checkSuggestUpdate(); //проверка и предложение обновлений
     }
 }
