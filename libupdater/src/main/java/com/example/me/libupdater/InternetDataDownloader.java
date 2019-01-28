@@ -35,9 +35,9 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
     @Override
     protected void onPostExecute(Void aVoid) {
         if (hasExecuted)
-            internetDataDownloadListener.onInternetDataDownloaded(this);
+            internetDataDownloadListener.onInternetDataDownloaded(internetDataPathToStore);
         else
-            internetDataDownloadListener.onInternetDataCouldNotDownload(this);
+            internetDataDownloadListener.onInternetDataCouldNotDownload(internetDataPathToStore);
     }
 
     protected void downloadData() {
@@ -72,22 +72,18 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
             e.printStackTrace();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-            internetDataDownloadListener.onInternetDataCouldNotDownload(this);
+            internetDataDownloadListener.onInternetDataCouldNotDownload(internetDataPathToStore);
         } catch (MalformedURLException e) {
             e.printStackTrace();
-            internetDataDownloadListener.onInternetDataCouldNotDownload(this);
+            internetDataDownloadListener.onInternetDataCouldNotDownload(internetDataPathToStore);
         } catch (IOException e) {
             e.printStackTrace();
-            internetDataDownloadListener.onInternetDataCouldNotDownload(this);
+            internetDataDownloadListener.onInternetDataCouldNotDownload(internetDataPathToStore);
         }
     }
 
     @Override
     protected void onProgressUpdate(Integer... values) {
         internetDataDownloadListener.onInternetDataDownloadingProgressUpdate(values[0]);
-    }
-
-    public String getInternetDataPathToStore() {
-        return internetDataPathToStore;
     }
 }

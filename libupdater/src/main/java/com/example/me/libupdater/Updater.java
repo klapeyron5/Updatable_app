@@ -50,7 +50,10 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     /*Here permissions result will be caught (beside REQUEST_INSTALL_PACKAGES)*/
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
-            checkUpdate();
+            int currentCodeVersion = getAppVersionCode(); //TODO may be check appVersion > 0
+            if (currentCodeVersion < UpdatesInfoStruct.getLastCodeVersion()) {
+                downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath());
+            }
         }
     }
 
@@ -58,7 +61,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     /*Here REQUEST_INSTALL_PACKAGES will be caught.*/
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK) {
-            tryToInstallApk(getApkStorePath());
+            installApk(getApkStorePath());
         }
     }
 //---End of activity's overrides
@@ -71,11 +74,12 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         }
     }
 
-    /*Check info about app updates. Results of checks will be returned in UpdatesCheckListener implementation.*/
+    /*Checks info about app updates. Results of checks will be returned in UpdatesCheckListener implementation.*/
     private void checkUpdate() {
         new UpdatesChecker(getString(R.string.update_info_URL)).execute(this);
     }
 
+    /*Suggests user to update app.*/
     private void suggestUpdate() {
         int currentCodeVersion = getAppVersionCode(); //TODO may be check appVersion > 0
         if (currentCodeVersion < UpdatesInfoStruct.getLastCodeVersion()) {
@@ -125,13 +129,13 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     }
 
     @Override
-    public void onInternetDataDownloaded(InternetDataDownloader internetDataDownloader) {
+    public void onInternetDataDownloaded(String internetDataPathToStore) {
         Log.d("TAG","onInternetDataDownloaded");
-        installApk(internetDataDownloader.getInternetDataPathToStore());
+        installApk(internetDataPathToStore);
     }
 
     @Override
-    public void onInternetDataCouldNotDownload(InternetDataDownloader internetDataDownloader) {
+    public void onInternetDataCouldNotDownload(String internetDataPathToStore) {
         Log.d("TAG","onInternetDataCouldNotDownload");
     }
 
@@ -177,18 +181,12 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                 "/"+getAppLabel()+"_"+UpdatesInfoStruct.getLastVersionName()+".apk";
     }
 
-
-
-
-
-
-
     /*Returns true if app has WRITE_EXTERNAL_STORAGE permission and starts InternetDataDownloader*/
     private void downloadInternetData(String internetDataUrl, String internetDataPathToStore) {
         Log.d("TAG","internetDataPathToStore: "+internetDataPathToStore);
         if (hasPermissions(getActivity(),new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE})) {
             new InternetDataDownloader(internetDataUrl,internetDataPathToStore).execute(this);
-        } else {
+        } else { //TODO write permission rationale
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
         }
@@ -201,7 +199,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                     @Override
                     public void run() {
                         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                        builder.setMessage("APK файл последней версии приложения " + getResources().getString(R.string.app_name) + " загрузился, " +
+                        builder.setMessage("APK файл последней версии приложения " + getAppLabel() + " загрузился, " +
                                 "но приложение не имеет разрешения на установку этого apk. Сейчас вы будете перенаправлены, чтобы дать это разрешение.")
                                 .setPositiveButton("Ок", new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
@@ -217,12 +215,14 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                     }
                 });
             }
-        } else
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            tryToInstallApk(apkUrl);
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) { //minimum 14 API level
+                tryToInstallApk(apkUrl);
+            }
         }
     }
 
+    /*Use this only from installApk() method.*/
     private boolean tryToInstallApk(String apkUrl) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { //>= 26 API level
             if (getActivity().getPackageManager().canRequestPackageInstalls()) {
