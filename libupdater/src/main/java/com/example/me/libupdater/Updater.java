@@ -50,8 +50,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     /*Here permissions result will be caught (beside REQUEST_INSTALL_PACKAGES)*/
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
-            int currentCodeVersion = getAppVersionCode(); //TODO may be check appVersion > 0
-            if (currentCodeVersion < UpdatesInfoStruct.getLastCodeVersion()) {
+            if (isUpdateNeeded()) {
                 downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath());
             }
         }
@@ -81,39 +80,43 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
 
     /*Suggests user to update app.*/
     private void suggestUpdate() {
-        int currentCodeVersion = getAppVersionCode(); //TODO may be check appVersion > 0
-        if (currentCodeVersion < UpdatesInfoStruct.getLastCodeVersion()) {
+        Long currentCodeVersion = getAppVersionCode();
+        if (currentCodeVersion != null) {
+            if (currentCodeVersion < UpdatesInfoStruct.getLastCodeVersion()) {
 
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-                    builder.setMessage("Доступно обновление приложения " + getAppLabel() + " до версии " +
-                            UpdatesInfoStruct.getLastVersionName() + " - желаете обновиться?")
-                            .setCancelable(true)
-                            .setPositiveButton("Да", new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int id) {
-                                    dialog.dismiss();
-                                    downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath());
-                                }
-                            })
-                            .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int id) {
-                                    dialog.cancel();
-                                }
-                            });
-                    AlertDialog alert = builder.create();
-                    alert.show();
+                        builder.setMessage("Доступно обновление приложения " + getAppLabel() + " до версии " +
+                                UpdatesInfoStruct.getLastVersionName() + " - желаете обновиться?")
+                                .setCancelable(true)
+                                .setPositiveButton("Да", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        dialog.dismiss();
+                                        downloadInternetData(UpdatesInfoStruct.getLastAppURL(), getApkStorePath());
+                                    }
+                                })
+                                .setNegativeButton("Нет", new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        dialog.cancel();
+                                    }
+                                });
+                        AlertDialog alert = builder.create();
+                        alert.show();
+                    }
+                });
+
+            } else {
+                if (currentCodeVersion == UpdatesInfoStruct.getLastCodeVersion()) {
+                    //TODO update last time of updates check (not needed cas UpdatesInfoStruct stores last timestamp)
+                } else { //TODO current version > last version checked from host
+                    //TODO problems on host
                 }
-            });
-
-        } else {
-            if (currentCodeVersion == UpdatesInfoStruct.getLastCodeVersion()) {
-                //TODO update last time of updates check (not needed cas UpdatesInfoStruct stores last timestamp)
-            } else { //TODO current version > last version checked from host
-                //TODO problems on host
             }
+        } else {
+            //TODO problems with PackageManager
         }
     }
 
@@ -166,14 +169,30 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     }
 
     @Nullable
-    private int getAppVersionCode() {
+    /*Returns null if PackageManager.NameNotFoundException happened.*/
+    private Long getAppVersionCode() {
         PackageInfo pInfo = null;
         try {
             pInfo = getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0);
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
+            return null;
         }
-        return pInfo.versionCode;
+        Long returnValue = null;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            returnValue = Long.valueOf(pInfo.versionCode);
+        } else {
+            returnValue =  pInfo.getLongVersionCode();
+        }
+        return returnValue;
+    }
+
+    /*Checks if getAppVersionCode() not null and < last code version.*/
+    private boolean isUpdateNeeded() {
+        Long currentCodeVersion = getAppVersionCode();
+        if ((currentCodeVersion != null)&&(currentCodeVersion < UpdatesInfoStruct.getLastCodeVersion()))
+            return true;
+        return false;
     }
 
     private String getApkStorePath() {
