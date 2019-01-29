@@ -41,11 +41,11 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
     }
 
     protected void downloadData() {
-        if (internetDataDownloadListener == null) throw new NullPointerException();
-
-        String dataUrl = internetDataUrl;
-        String dataStorePath = internetDataPathToStore;
         try {
+            if (internetDataDownloadListener == null) throw new NullPointerException();
+
+            String dataUrl = internetDataUrl;
+            String dataStorePath = internetDataPathToStore;
             URL url = new URL(dataUrl); //MalformedURLException
             URLConnection connection = url.openConnection(); //IOException
             connection.connect(); //IOException
@@ -69,7 +69,7 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
             input.close(); //IOException
             hasExecuted = true;
         } catch (NullPointerException e) {
-            e.printStackTrace();
+            e.printStackTrace(); //TODO where is internetDataDownloadListener ?
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             internetDataDownloadListener.onInternetDataCouldNotDownload(internetDataPathToStore);

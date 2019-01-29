@@ -37,6 +37,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     public void onAttach(Context context) {
         super.onAttach(context);
         isAttached = true;
+        getActivity().getFilesDir();
     }
 
     //TODO delete this override may be
@@ -65,6 +66,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     }
 //---End of activity's overrides
 
+    /*Check last version and suggest to update if needed.*/
     public void checkSuggestUpdate() {
         if (isAttached) {
             checkUpdate();
@@ -195,9 +197,9 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         return false;
     }
 
+    /*Return path and file name to sore in External app's private directory (but user has access to it).*/
     private String getApkStorePath() {
-        return Environment.getExternalStorageDirectory()+
-                "/"+getAppLabel()+"_"+UpdatesInfoStruct.getLastVersionName()+".apk";
+        return getActivity().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)+"/"+getAppLabel()+"_"+UpdatesInfoStruct.getLastVersionName()+".apk";
     }
 
     /*Returns true if app has WRITE_EXTERNAL_STORAGE permission and starts InternetDataDownloader*/
@@ -211,6 +213,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         }
     }
 
+    /*Install apk from given url.*/
     private void installApk(String apkUrl) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!tryToInstallApk(apkUrl)) {
