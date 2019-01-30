@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -37,7 +38,6 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     public void onAttach(Context context) {
         super.onAttach(context);
         isAttached = true;
-        getActivity().getFilesDir();
     }
 
     //TODO delete this override may be
@@ -51,17 +51,17 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     /*Here permissions result will be caught (beside REQUEST_INSTALL_PACKAGES)*/
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
-            if (isUpdateNeeded()) {
-                downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath());
-            }
+            processREQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE();
         }
     }
 
     @Override
-    /*Here REQUEST_INSTALL_PACKAGES will be caught.*/
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK) {
             installApk(getApkStorePath());
+        }
+        if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
+            processREQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE();
         }
     }
 //---End of activity's overrides
@@ -208,6 +208,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         if (hasPermissions(getActivity(),new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE})) {
             new InternetDataDownloader(internetDataUrl,internetDataPathToStore).execute(this);
         } else { //TODO write permission rationale
+            Log.d("TAG","requestPermissions before");
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
         }
@@ -217,25 +218,25 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     private void installApk(String apkUrl) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (!tryToInstallApk(apkUrl)) {
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                        builder.setMessage("APK файл последней версии приложения " + getAppLabel() + " загрузился, " +
-                                "но приложение не имеет разрешения на установку этого apk. Сейчас вы будете перенаправлены, чтобы дать это разрешение.")
-                                .setPositiveButton("Ок", new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int id) {
-                                        dialog.dismiss();
-                                        startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                                        Uri.parse("package:"+getActivity().getPackageName())),
-                                                REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK);
-
-                                    }
-                                });
-                        AlertDialog alert = builder.create();
-                        alert.show();
-                    }
-                });
+                showDialogWithOkButton("APK файл последней версии приложения " + getAppLabel() + " загрузился, " +
+                                "но приложение не имеет разрешения на установку этого apk. Сейчас вы будете перенаправлены, чтобы дать это разрешение.",
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                         //       dialog.dismiss(); //TODO is needed or not? seems not
+                                startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                                Uri.parse("package:"+getActivity().getPackageName())),
+                                        REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK);
+                            }
+                        },
+                        new DialogInterface.OnCancelListener() {
+                            @Override
+                            public void onCancel(DialogInterface dialog) {
+                                startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                                Uri.parse("package:"+getActivity().getPackageName())),
+                                        REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK);
+                            }
+                        });
             }
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) { //minimum 14 API level
@@ -256,14 +257,15 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                 getActivity().startActivity(intent);
                 return true;
             }
-        } else
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) { //minimum 14 API level
-            File file = new File(apkUrl);
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            Uri contentUri = Uri.fromFile(file);
-            intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
-            getActivity().startActivity(intent);
-            return true;
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) { //minimum 14 API level
+                File file = new File(apkUrl);
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                Uri contentUri = Uri.fromFile(file);
+                intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+                getActivity().startActivity(intent);
+                return true;
+            }
         }
         return false;
     }
@@ -273,10 +275,83 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
             for (String permission : permissions) {
                 if (getActivity().checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                  /*  if (getActivity().shouldShowRequestPermissionRationale(permission)) {
+                        Log.d("TAG","shouldShowRequestPermissionRationale TRUE");
+                    } else {
+                        Log.d("TAG","shouldShowRequestPermissionRationale FALSE");
+                    }*/
                     return false;
                 }
             }
         }
         return true;
+    }
+
+    private void showDialogWithOkButton(final String message, final DialogInterface.OnClickListener okListener, final DialogInterface.OnCancelListener cancelListener) {
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                builder.setMessage(message)
+                        .setPositiveButton("Ок", okListener)
+                        .setOnCancelListener(cancelListener);
+                AlertDialog alert = builder.create();
+                alert.show();
+            }
+        });
+    }
+
+    private void processREQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE() {
+        if (isUpdateNeeded()) {
+            String permission = Manifest.permission.WRITE_EXTERNAL_STORAGE;
+            if (hasPermissions(getActivity(),permission)) {
+                downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath()); //double permission check. Think it's ok.
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (getActivity().shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                        //user pressed only "DENY"
+                        showDialogWithOkButton("Разрешение на доступ к файлам нужно для загрузки .apk-файла последней версии приложения"+
+                                        getAppLabel()+" в хранилище смартфона, чтобы затем провести установить его.",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        Log.d("TAG", "shouldShowRequestPermissionRationale OK pressed");
+                                        downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath());
+                                    }
+                                },
+                                new DialogInterface.OnCancelListener() {
+                                    @Override
+                                    public void onCancel(DialogInterface dialog) {
+                                        Log.d("TAG", "shouldShowRequestPermissionRationale CANCELED");
+                                        downloadInternetData(UpdatesInfoStruct.getLastAppURL(),getApkStorePath());
+                                    }
+                                });
+                    } else {
+                        //user pressed "Don't ask again" and "DENY" or "ALLOW", but last is excluded by first condition
+                        showDialogWithOkButton("Приложение "+getAppLabel()+" требует срочного обновления. "+
+                                        "Пожалуйста, дайте разрешение на доступ к файлам, оно нужно для загрузки последней версии. " +
+                                        "Сейчас вы будете перенаправлены на экран настроек приложения, откуда можно дать это разрешение.",
+                                new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        startActivityForResult(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                        Uri.parse("package:"+getActivity().getPackageName())),
+                                                REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
+                                    }
+                                },
+                                new DialogInterface.OnCancelListener() {
+                                    @Override
+                                    public void onCancel(DialogInterface dialog) {
+                                        startActivityForResult(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                        Uri.parse("package:"+getActivity().getPackageName())),
+                                                REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
+                                    }
+                                });
+                    }
+                } else {
+                    //TODO what should I do here
+                }
+            }
+        }
     }
 }
