@@ -2,33 +2,36 @@ package com.example.me.libupdater;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.media.RingtoneManager;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.FileProvider;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
 import android.os.Build;
 
 import java.io.File;
+import java.util.Date;
 
 import com.example.me.libupdater.UpdatesChecker.UpdatesInfoStruct;
 
 public class Updater extends Fragment implements UpdatesCheckListener, InternetDataDownloadListener {
-    private static final Integer REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE = 21;
-    private static final Integer REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK = 22;
+    private static final Integer REQUEST__WRITE_EXTERNAL_STORAGE__PERMISSION_TO_REQUEST_UPDATE = 21;
+    private static final Integer REQUEST__REQUEST_INSTALL_PACKAGES__PERMISSION_TO_INSTALL_LAST_VERSION_APK = 22;
+    private static final Integer REQUEST__INSTALL_PACKAGE__INTENT_TO_INSTALL_LAST_VERSION_APK = 23;
 
     /*Must be True to be able for work. To make it True - attach this fragment to your main activity.*/
     private boolean isAttached = false;
@@ -42,18 +45,22 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
+        if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__PERMISSION_TO_REQUEST_UPDATE) {
             processREQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE();
         }
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK) {
+        Log.d("TAG","onActivityResult: "+requestCode+"|"+resultCode);
+        if (requestCode == REQUEST__REQUEST_INSTALL_PACKAGES__PERMISSION_TO_INSTALL_LAST_VERSION_APK) {
             installApk(getApkStorePath());
         }
-        if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
+        if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__PERMISSION_TO_REQUEST_UPDATE) {
             processREQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE();
+        }
+        if (requestCode == REQUEST__INSTALL_PACKAGE__INTENT_TO_INSTALL_LAST_VERSION_APK) {
+            Log.d("TAG","REQUEST__INSTALL_PACKAGE__INTENT_TO_INSTALL_LAST_VERSION_APK");
         }
     }
 //---End of activity's overrides
@@ -139,6 +146,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     @Override
     public void onInternetDataDownloadingProgressUpdate(Integer p) {
         Log.d("TAG","onInternetDataDownloadingProgressUpdate: " + p);
+        showNotification("HIHI","HIYA",new Intent(),p);
     }
 
     private void clearCache() {
@@ -202,7 +210,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         } else {
             Log.d("TAG","requestPermissions before");
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
+                    REQUEST__WRITE_EXTERNAL_STORAGE__PERMISSION_TO_REQUEST_UPDATE);
         }
     }
 
@@ -218,7 +226,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                          //       dialog.dismiss(); //TODO is needed or not? seems not
                                 startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                                 Uri.parse("package:"+getActivity().getPackageName())),
-                                        REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK);
+                                        REQUEST__REQUEST_INSTALL_PACKAGES__PERMISSION_TO_INSTALL_LAST_VERSION_APK);
                             }
                         },
                         new DialogInterface.OnCancelListener() {
@@ -226,7 +234,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                             public void onCancel(DialogInterface dialog) {
                                 startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                                 Uri.parse("package:"+getActivity().getPackageName())),
-                                        REQUEST__REQUEST_INSTALL_PACKAGES__TO_INSTALL_LAST_VERSION_APK);
+                                        REQUEST__REQUEST_INSTALL_PACKAGES__PERMISSION_TO_INSTALL_LAST_VERSION_APK);
                             }
                         });
             }
@@ -252,7 +260,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) { //minimum 14 API level
                 File file = new File(apkUrl);
-                Intent intent = new Intent(Intent.ACTION_VIEW);
+                Intent intent = new Intent(Intent.ACTION_VIEW); //TODO ACTION_INSTALL_PACKAGE
                 Uri contentUri = Uri.fromFile(file);
                 intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
                 getActivity().startActivity(intent);
@@ -262,7 +270,23 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         return false;
     }
 
-    /*Check if app has permissions*/
+    //TODO
+    private boolean newTryToInstallApk(String apkUrl) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { //>= 26 API level
+            if (getActivity().getPackageManager().canRequestPackageInstalls()) {
+                File file = new File(apkUrl);
+                Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+                Uri contentUri = Uri.fromFile(new File(apkUrl));
+                intent.setData(contentUri);
+                intent.putExtra(Intent.EXTRA_RETURN_RESULT,true);
+                getActivity().startActivityForResult(intent,REQUEST__INSTALL_PACKAGE__INTENT_TO_INSTALL_LAST_VERSION_APK);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /*Check if app has permissions.*/
     private boolean hasPermissions(Context context, String... permissions) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
             for (String permission : permissions) {
@@ -323,7 +347,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                                     public void onClick(DialogInterface dialog, int which) {
                                         startActivityForResult(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                                         Uri.parse("package:"+getActivity().getPackageName())),
-                                                REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
+                                                REQUEST__WRITE_EXTERNAL_STORAGE__PERMISSION_TO_REQUEST_UPDATE);
                                     }
                                 },
                                 new DialogInterface.OnCancelListener() {
@@ -331,7 +355,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                                     public void onCancel(DialogInterface dialog) {
                                         startActivityForResult(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                                                         Uri.parse("package:"+getActivity().getPackageName())),
-                                                REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
+                                                REQUEST__WRITE_EXTERNAL_STORAGE__PERMISSION_TO_REQUEST_UPDATE);
                                     }
                                 });
                     }
@@ -340,5 +364,40 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                 }
             }
         }
+    }
+
+    private void initNotification() {
+
+    }
+    public void showNotification(String heading, String description, Intent intent,int progress){
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        createChannel();
+        PendingIntent pendingIntent = PendingIntent.getActivity(getActivity(), 0 /* Request code */, intent,
+                PendingIntent.FLAG_ONE_SHOT);
+        Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+
+        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getActivity(),"channelID")
+                .setSmallIcon(R.drawable.ic_android_black_24dp)
+                .setContentTitle(heading)
+                .setContentText(description)
+                .setAutoCancel(true)
+                .setSound(null)
+                .setProgress(100,progress,false)
+                .setContentIntent(pendingIntent);
+
+        NotificationManager notificationManager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+        int notificationId = (int) ((new Date().getTime() / 1000L) % Integer.MAX_VALUE);
+        notificationManager.notify(notificationId, notificationBuilder.build());
+    }
+
+    public void createChannel(){
+        if (Build.VERSION.SDK_INT < 26) {
+            return;
+        }
+        NotificationManager notificationManager =
+                (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationChannel channel = new NotificationChannel("channelID","name", NotificationManager.IMPORTANCE_DEFAULT);
+        channel.setDescription("Description");
+        notificationManager.createNotificationChannel(channel);
     }
 }
