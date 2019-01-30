@@ -24,7 +24,6 @@ import android.util.Log;
 import android.os.Build;
 
 import java.io.File;
-import java.util.Date;
 
 import com.example.me.libupdater.UpdatesChecker.UpdatesInfoStruct;
 
@@ -124,6 +123,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     @Override
     public void onUpdatesChecked() {
         Log.d("TAG","latest version: " + UpdatesInfoStruct.getLastVersionName());
+        initNotification("Загрузка обновления",new Intent());
         suggestUpdate();
     }
 
@@ -146,7 +146,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
     @Override
     public void onInternetDataDownloadingProgressUpdate(Integer p) {
         Log.d("TAG","onInternetDataDownloadingProgressUpdate: " + p);
-        showNotification("HIHI","HIYA",new Intent(),p);
+        showNotification(p);
     }
 
     private void clearCache() {
@@ -366,27 +366,34 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         }
     }
 
-    private void initNotification() {
 
-    }
-    public void showNotification(String heading, String description, Intent intent,int progress){
+    NotificationCompat.Builder notificationBuilder;
+    NotificationManager notificationManager;
+    int notificationId;
+
+    private void initNotification(String heading, Intent intent) {
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         createChannel();
         PendingIntent pendingIntent = PendingIntent.getActivity(getActivity(), 0 /* Request code */, intent,
                 PendingIntent.FLAG_ONE_SHOT);
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(getActivity(),"channelID")
+        notificationBuilder = new NotificationCompat.Builder(getActivity(),"channelID")
                 .setSmallIcon(R.drawable.ic_android_black_24dp)
                 .setContentTitle(heading)
-                .setContentText(description)
                 .setAutoCancel(true)
                 .setSound(null)
-                .setProgress(100,progress,false)
                 .setContentIntent(pendingIntent);
 
-        NotificationManager notificationManager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
-        int notificationId = (int) ((new Date().getTime() / 1000L) % Integer.MAX_VALUE);
+        notificationManager = (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationId = 1;
+    }
+
+    public void showNotification(int progress){
+        notificationBuilder
+                .setContentText(progress+"%")
+                .setProgress(100,progress,false);
+
         notificationManager.notify(notificationId, notificationBuilder.build());
     }
 
