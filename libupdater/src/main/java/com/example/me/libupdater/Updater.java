@@ -40,15 +40,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         isAttached = true;
     }
 
-    //TODO delete this override may be
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return null;
-    }
-
-    @Override
-    /*Here permissions result will be caught (beside REQUEST_INSTALL_PACKAGES)*/
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE) {
             processREQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE();
@@ -113,8 +105,8 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
             } else {
                 if (currentCodeVersion == UpdatesInfoStruct.getLastCodeVersion()) {
                     //TODO update last time of updates check (not needed cas UpdatesInfoStruct stores last timestamp)
-                } else { //TODO current version > last version checked from host
-                    //TODO problems on host
+                } else {
+                    //TODO problems on host: current version > last version checked from host
                 }
             }
         } else {
@@ -207,7 +199,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         Log.d("TAG","internetDataPathToStore: "+internetDataPathToStore);
         if (hasPermissions(getActivity(),new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE})) {
             new InternetDataDownloader(internetDataUrl,internetDataPathToStore).execute(this);
-        } else { //TODO write permission rationale
+        } else {
             Log.d("TAG","requestPermissions before");
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     REQUEST__WRITE_EXTERNAL_STORAGE__TO_REQUEST_UPDATE);
@@ -275,11 +267,6 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
             for (String permission : permissions) {
                 if (getActivity().checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
-                  /*  if (getActivity().shouldShowRequestPermissionRationale(permission)) {
-                        Log.d("TAG","shouldShowRequestPermissionRationale TRUE");
-                    } else {
-                        Log.d("TAG","shouldShowRequestPermissionRationale FALSE");
-                    }*/
                     return false;
                 }
             }
@@ -310,8 +297,8 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (getActivity().shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                         //user pressed only "DENY"
-                        showDialogWithOkButton("Разрешение на доступ к файлам нужно для загрузки .apk-файла последней версии приложения"+
-                                        getAppLabel()+" в хранилище смартфона, чтобы затем провести установить его.",
+                        showDialogWithOkButton("Разрешение на доступ к файлам нужно для загрузки .apk-файла последней " +
+                                        "версии приложения "+ getAppLabel(),
                                 new DialogInterface.OnClickListener() {
                                     @Override
                                     public void onClick(DialogInterface dialog, int which) {
@@ -349,7 +336,7 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
                                 });
                     }
                 } else {
-                    //TODO what should I do here
+                    //We can not be here because lower Android versions do not allow to turn off permissions after installation
                 }
             }
         }

@@ -76,8 +76,10 @@ public class UpdatesChecker extends AsyncTask<UpdatesCheckListener, Void, Void> 
             hasExecuted = true;
         } catch (NullPointerException e) {
             e.printStackTrace(); //TODO where is updatesCheckListener ?
+            updatesCheckListener.onUpdatesCouldNotCheck("UpdateChecker has updatesCheckListener == null ");
         } catch (MalformedURLException e) {
             e.printStackTrace();
+            updatesCheckListener.onUpdatesCouldNotCheck("MalformedURLException");
         } catch (IOException e) {
             e.printStackTrace();
             updatesCheckListener.onUpdatesCouldNotCheck("IOException");
