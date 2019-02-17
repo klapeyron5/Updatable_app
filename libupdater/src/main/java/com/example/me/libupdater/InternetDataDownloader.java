@@ -1,8 +1,10 @@
 package com.example.me.libupdater;
 
 import android.os.AsyncTask;
+import android.util.Log;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -50,11 +52,18 @@ public class InternetDataDownloader extends AsyncTask<InternetDataDownloadListen
             URLConnection connection = url.openConnection(); //IOException
             connection.connect(); //IOException
 
-            int fileLength = connection.getContentLength();
+            Long fileLength = Long.parseLong(connection.getHeaderField("content-length")); //in bytes
 
             // download the file
             InputStream input = new BufferedInputStream(url.openStream()); //IOException
             OutputStream output = new FileOutputStream(dataStorePath); //FileNotFoundException
+
+            File outputFile = new File(dataStorePath);
+            long freeSpace = outputFile.getFreeSpace();
+            if (freeSpace < fileLength) {
+                internetDataDownloadListener.onInternetDataNoFreeStorageSpace();
+                throw new IOException();
+            }
 
             byte data[] = new byte[1024];
             long total = 0;

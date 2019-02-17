@@ -9,4 +9,6 @@ public interface InternetDataDownloadListener {
 
     /*Here can be shown current progress of downloading on UI*/
     public void onInternetDataDownloadingProgressUpdate(Integer p);
+
+    public void onInternetDataNoFreeStorageSpace();
 }

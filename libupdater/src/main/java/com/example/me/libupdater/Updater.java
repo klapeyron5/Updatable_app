@@ -149,6 +149,12 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
         showNotification(p);
     }
 
+    @Override
+    public void onInternetDataNoFreeStorageSpace() {
+        Log.d("TAG","onInternetDataNoFreeStorageSpace");
+        //TODO notificate
+    }
+
     private void clearCache() {
 
     }
