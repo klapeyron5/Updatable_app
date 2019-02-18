@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.arch.lifecycle.LiveData;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -24,8 +25,11 @@ import android.util.Log;
 import android.os.Build;
 
 import java.io.File;
+import java.util.List;
 
 import com.example.me.libupdater.UpdatesChecker.UpdatesInfoStruct;
+import com.example.me.libupdater.history.UpdateEvent;
+import com.example.me.libupdater.history.UpdateEventsRepository;
 
 public class Updater extends Fragment implements UpdatesCheckListener, InternetDataDownloadListener {
     private static final Integer REQUEST__WRITE_EXTERNAL_STORAGE__PERMISSION_TO_REQUEST_UPDATE = 21;
@@ -34,6 +38,9 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
 
     /*Must be True to be able for work. To make it True - attach this fragment to your main activity.*/
     private boolean isAttached = false;
+
+    UpdateEventsRepository updateEventsRepository;
+    LiveData<List<UpdateEvent>> allUpdateEvents;
 
     @Override
     /*Attaching to calling activity. Essential for work.*/
@@ -66,7 +73,12 @@ public class Updater extends Fragment implements UpdatesCheckListener, InternetD
 
     /*Check last version and suggest to update if needed.*/
     public void checkSuggestUpdate() {
+        Log.d("TAG","checkSuggestUpdate");
         if (isAttached) {
+            updateEventsRepository = new UpdateEventsRepository(getActivity().getApplication());
+            allUpdateEvents = updateEventsRepository.getAllUpdateEvents();
+            updateEventsRepository.insert(new UpdateEvent("TestUpdateEventName"));
+            Log.d("TAG","allUpdateEvents.size(): "+allUpdateEvents.getValue().size());
             checkUpdate();
         } else {
             //TODO

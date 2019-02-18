@@ -7,11 +7,13 @@ import android.support.annotation.NonNull;
 
 @Entity(tableName = "UpdateEvents")
 public class UpdateEvent {
-    @PrimaryKey(autoGenerate = true)
+  /*  @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "eventId")
-    private int id;
+    private int id;*/
 
+    @PrimaryKey
     @ColumnInfo(name = "versionName")
+    @NonNull
     private String versionName;
 
     public UpdateEvent(String versionName) {
